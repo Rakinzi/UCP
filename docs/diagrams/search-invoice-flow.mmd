@@ -1,0 +1,22 @@
+%%{init: {"theme": "base", "themeVariables": {"background":"#f7f7fb","primaryColor":"#ffffff","primaryBorderColor":"#cbd5f5","primaryTextColor":"#0f172a","lineColor":"#4f46e5","textColor":"#111827","fontFamily":"\"Plus Jakarta Sans\", \"Inter\", \"Segoe UI\", sans-serif","fontSize":"14px","actorBkg":"#eef2ff","actorBorder":"#c7d2fe","actorTextColor":"#1e1b4b","signalColor":"#4f46e5","signalTextColor":"#1f2937","noteBkgColor":"#fef3c7","noteTextColor":"#7c2d12"}}}%%
+sequenceDiagram
+  autonumber
+  participant UI as Agent UI
+  participant Agent as Agent Backend
+  participant S1 as Store1 API
+  participant S2 as Store2 API
+  participant S3 as Store3 API
+
+  UI->>Agent: GET /search?q=term
+  par Store search
+    Agent->>S1: GET /api/products?q=term
+    Agent->>S2: GET /api/products?q=term
+    Agent->>S3: GET /api/products?q=term
+  end
+  Agent-->>UI: merged results
+
+  UI->>Agent: POST /invoice (items)
+  Agent->>S1: GET /api/products/:id
+  Agent->>S2: GET /api/products/:id
+  Agent->>S3: GET /api/products/:id
+  Agent-->>UI: invoice + store totals

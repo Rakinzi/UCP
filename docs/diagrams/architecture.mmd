@@ -1,0 +1,26 @@
+%%{init: {"theme": "base", "themeVariables": {"background":"#eef2ff","primaryColor":"#ffffff","primaryBorderColor":"#c7d2fe","primaryTextColor":"#0f172a","secondaryColor":"#e0e7ff","secondaryBorderColor":"#a5b4fc","secondaryTextColor":"#1e1b4b","tertiaryColor":"#f8fafc","tertiaryBorderColor":"#cbd5e1","lineColor":"#4f46e5","textColor":"#0f172a","fontFamily":"\"Plus Jakarta Sans\", \"Inter\", \"Segoe UI\", sans-serif","fontSize":"14px","mainBkg":"#ffffff","clusterBkg":"#ffffff","clusterBorder":"#c7d2fe"}}}%%
+flowchart LR
+  linkStyle default stroke:#4f46e5,stroke-width:2.4px
+  subgraph Client
+    UI[Agent UI\nSvelteKit + shadcn-svelte]
+  end
+
+  subgraph Agent
+    BE[Agent Backend\nFastAPI]
+    Key[Ed25519 Key\nprivate/public]
+  end
+
+  subgraph Stores
+    S1[Store 1\nSvelteKit + Skeleton\nPostgres DB]
+    S2[Store 2\nSvelteKit + SMUI\nPostgres DB]
+    S3[Store 3\nSvelteKit + Steeze\nPostgres DB]
+  end
+
+  UI -->|Search/Invoice/Pay| BE
+  BE -->|Fetch products| S1
+  BE -->|Fetch products| S2
+  BE -->|Fetch products| S3
+  BE -->|AP2 Sessions + Complete| S1
+  BE -->|AP2 Sessions + Complete| S2
+  BE -->|AP2 Sessions + Complete| S3
+  BE --> Key

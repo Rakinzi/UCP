@@ -1,0 +1,19 @@
+%%{init: {"theme": "base", "themeVariables": {"background":"#f7f7fb","primaryColor":"#ffffff","primaryBorderColor":"#cbd5f5","primaryTextColor":"#0f172a","secondaryColor":"#eef2ff","secondaryBorderColor":"#c7d2fe","secondaryTextColor":"#1e1b4b","tertiaryColor":"#f1f5f9","tertiaryBorderColor":"#cbd5e1","lineColor":"#4f46e5","textColor":"#111827","fontFamily":"\"Plus Jakarta Sans\", \"Inter\", \"Segoe UI\", sans-serif","fontSize":"14px","mainBkg":"#ffffff","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1"}}}%%
+flowchart TB
+  linkStyle default stroke:#4f46e5,stroke-width:2px
+  subgraph DockerHost[Docker Host]
+    subgraph AgentStack[Agent Stack]
+      AF[agent-frontend\n:5173]
+      AB[agent-backend\n:8000]
+    end
+    subgraph StoreStack[Stores]
+      S1[store1-frontend\n:4001]
+      S2[store2-frontend\n:4002]
+      S3[store3-frontend\n:4003]
+    end
+  end
+
+  AF --> AB
+  AB --> S1
+  AB --> S2
+  AB --> S3

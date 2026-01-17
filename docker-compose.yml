@@ -1,0 +1,84 @@
+services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - store1-frontend
+      - store2-frontend
+      - store3-frontend
+
+  agent-backend:
+    build: ./agent/backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - STORE_FRONTENDS=http://store1-frontend:3000,http://store2-frontend:3000,http://store3-frontend:3000
+    command: ["/bin/sh", "-c", "uv sync --frozen --no-dev && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload"]
+    volumes:
+      - ./agent/backend:/app
+      - /app/.venv
+
+  agent-frontend:
+    build: ./agent/frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=200
+      - TAILWIND_DISABLE_OXIDE=1
+    depends_on:
+      - agent-backend
+    command: ["/bin/sh", "-c", "bun install && bun run dev --host"]
+    volumes:
+      - ./agent/frontend:/app
+      - /app/node_modules
+
+  store1-frontend:
+    build: ./stores/store1
+    ports:
+      - "4001:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=200
+      - DATABASE_URL=${STORE1_DATABASE_URL:-postgres://postgres:postgres@host.docker.internal:5432/ucp_store1}
+      - STORE_NAME=Store-Alpha
+      - AGENT_PUBLIC_KEY=f7d4ef7dfed58962147985b34c672594ce3b958fe43726395c3ada0fc770ddf4
+    command: ["/bin/sh", "-c", "bun install && bun run db:seed && bun run dev --host 0.0.0.0 --port 3000"]
+    volumes:
+      - ./stores/store1:/app
+      - /app/node_modules
+
+  store2-frontend:
+    build: ./stores/store2
+    ports:
+      - "4002:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=200
+      - DATABASE_URL=${STORE2_DATABASE_URL:-postgres://postgres:postgres@host.docker.internal:5432/ucp_store2}
+      - STORE_NAME=Store-Beta
+      - AGENT_PUBLIC_KEY=f7d4ef7dfed58962147985b34c672594ce3b958fe43726395c3ada0fc770ddf4
+    command: ["/bin/sh", "-c", "bun install && bun run db:seed && bun run dev --host 0.0.0.0 --port 3000"]
+    volumes:
+      - ./stores/store2:/app
+      - /app/node_modules
+
+  store3-frontend:
+    build: ./stores/store3
+    ports:
+      - "4003:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=200
+      - DATABASE_URL=${STORE3_DATABASE_URL:-postgres://postgres:postgres@host.docker.internal:5432/ucp_store3}
+      - STORE_NAME=Store-Gamma
+      - AGENT_PUBLIC_KEY=f7d4ef7dfed58962147985b34c672594ce3b958fe43726395c3ada0fc770ddf4
+    command: ["/bin/sh", "-c", "bun install && bun run db:seed && bun run dev --host 0.0.0.0 --port 3000"]
+    volumes:
+      - ./stores/store3:/app
+      - /app/node_modules

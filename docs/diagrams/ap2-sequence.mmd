@@ -1,0 +1,14 @@
+%%{init: {"theme": "base", "themeVariables": {"background":"#f7f7fb","primaryColor":"#ffffff","primaryBorderColor":"#cbd5f5","primaryTextColor":"#0f172a","lineColor":"#4f46e5","textColor":"#111827","fontFamily":"\"Plus Jakarta Sans\", \"Inter\", \"Segoe UI\", sans-serif","fontSize":"14px","actorBkg":"#eef2ff","actorBorder":"#c7d2fe","actorTextColor":"#1e1b4b","signalColor":"#4f46e5","signalTextColor":"#1f2937","noteBkgColor":"#fef3c7","noteTextColor":"#7c2d12"}}}%%
+sequenceDiagram
+  autonumber
+  participant UI as Agent UI
+  participant Agent as Agent Backend
+  participant Store as Store (SvelteKit)
+
+  UI->>Agent: Pay Invoice (items)
+  Agent->>Store: POST /sessions (order_total)
+  Store-->>Agent: 402 + X-UCP-Challenge
+  Agent->>Agent: sign(challenge + order_total)
+  Agent->>Store: POST /complete (X-UCP-Mandate)
+  Store-->>Agent: 201 Payment Confirmed
+  Agent-->>UI: Payment status
