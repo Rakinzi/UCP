@@ -17,10 +17,15 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - STORE_FRONTENDS=http://store1-frontend:3000,http://store2-frontend:3000,http://store3-frontend:3000
+      - OLLAMA_ENABLED=true
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=deepseek-r1:1.5b
     command: ["/bin/sh", "-c", "uv sync --frozen --no-dev && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload"]
     volumes:
       - ./agent/backend:/app
       - /app/.venv
+    depends_on:
+      - ollama
 
   agent-frontend:
     build: ./agent/frontend
@@ -82,3 +87,13 @@ services:
     volumes:
       - ./stores/store3:/app
       - /app/node_modules
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  ollama:

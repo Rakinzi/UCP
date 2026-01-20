@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import os
 from typing import cast
 from urllib.parse import urlparse, urlunparse
@@ -25,6 +26,10 @@ app.add_middleware(
 
 # Key Management
 KEY_FILE = "private_key.pem"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "3.0"))
+OLLAMA_ENABLED = os.getenv("OLLAMA_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 
 def get_or_create_key() -> ed25519.Ed25519PrivateKey:
     if os.path.exists(KEY_FILE):
@@ -112,7 +117,7 @@ async def search_products(q: str = Query(..., min_length=1)):
         for item in items:
             item["store"] = store
             merged.append(ProductSearchResult(**item))
-    return merged
+    return await rank_products_with_ollama(q, merged)
 
 @app.post("/invoice", response_model=InvoiceResponse)
 async def generate_invoice(request: PayRequest):
@@ -203,6 +208,77 @@ async def search_store(client: httpx.AsyncClient, store_url: str, query: str) ->
         return response.json()
     except Exception:
         return []
+
+
+def _extract_json(text: str) -> Dict:
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("No JSON object found in response")
+    return json.loads(text[start : end + 1])
+
+
+async def rank_products_with_ollama(
+    query: str, products: List[ProductSearchResult]
+) -> List[ProductSearchResult]:
+    if not OLLAMA_ENABLED or not products:
+        return products
+
+    payload_items = []
+    for idx, item in enumerate(products):
+        payload_items.append(
+            {
+                "idx": idx,
+                "store": item.store,
+                "id": item.id,
+                "name": item.name,
+                "description": item.description,
+                "price": item.price,
+            }
+        )
+
+    system_prompt = (
+        "You are a shopping assistant. Rank products for relevance to the user's query. "
+        "Return JSON only with the key 'ranked_indices' as an array of integers (idx values)."
+    )
+    user_prompt = {
+        "query": query,
+        "products": payload_items,
+        "instructions": "Return JSON only. Do not include any extra text.",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+            response = await client.post(
+                f"{OLLAMA_BASE_URL}/api/chat",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "stream": False,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": json.dumps(user_prompt)},
+                    ],
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            content = data.get("message", {}).get("content", "")
+            parsed = _extract_json(content)
+            ranked_indices = parsed.get("ranked_indices")
+            if not isinstance(ranked_indices, list):
+                return products
+            ranked = []
+            seen = set()
+            for idx in ranked_indices:
+                if isinstance(idx, int) and 0 <= idx < len(products) and idx not in seen:
+                    ranked.append(products[idx])
+                    seen.add(idx)
+            for idx, item in enumerate(products):
+                if idx not in seen:
+                    ranked.append(item)
+            return ranked
+    except Exception:
+        return products
 
 
 async def resolve_invoice_items(items: List[InvoiceItemRequest]) -> List[InvoiceItem]:
